@@ -1313,7 +1313,7 @@ async function enviarChat(){
       body:JSON.stringify({messages:chatHistorico.slice(-8)})
     });
     var dd=await r.json();
-    var resp=dd.content.map(function(c){return c.text||'';}).join('');
+    var resp=dd.text||dd.error||'Erro na resposta.';
     var typing=document.getElementById('typing-msg');
     if(typing) typing.remove();
     chatHistorico.push({role:'assistant',content:resp});
