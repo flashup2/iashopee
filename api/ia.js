@@ -16,7 +16,7 @@ export default async function handler(req, res) {
         'X-Title': 'Shopee Viral Pro'
       },
       body: JSON.stringify({
-        model: 'mistralai/mistral-7b-instruct:free',
+        model: 'openrouter/auto',
         max_tokens: max || 1000,
         messages: [
           {
