@@ -1,34 +1,39 @@
-self.addEventListener('install', e => self.skipWaiting());
-self.addEventListener('activate', e => e.waitUntil(clients.claim()));
+importScripts('https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js');
 
-self.addEventListener('push', e => {
-  const data = e.data ? e.data.json() : {};
-  const title = data.title || 'Shopee Viral Pro';
-  const options = {
-    body: data.body || 'Hora do envio agendado!',
+firebase.initializeApp({
+  apiKey: "AIzaSyCWnWWaxQ5H6Rzi6eda1wvYgtk60Hd6dxc",
+  projectId: "iashopee7",
+  messagingSenderId: "784750676949",
+  appId: "1:784750676949:web:0582600dcdd645a79b8b5c"
+});
+
+const messaging = firebase.messaging();
+
+messaging.onBackgroundMessage(function(payload) {
+  const { title, body } = payload.notification;
+  self.registration.showNotification(title || 'Shopee Viral Pro', {
+    body: body || 'Hora do envio agendado!',
     icon: 'https://img.icons8.com/color/192/shopee.png',
-    badge: 'https://img.icons8.com/color/72/shopee.png',
-    vibrate: [200, 100, 200],
-    data: { url: data.url || '/' }
-  };
-  e.waitUntil(self.registration.showNotification(title, options));
+    vibrate: [200, 100, 200]
+  });
 });
 
-self.addEventListener('notificationclick', e => {
+self.addEventListener('notificationclick', function(e) {
   e.notification.close();
-  e.waitUntil(clients.openWindow(e.notification.data.url));
+  e.waitUntil(clients.openWindow('https://iashopee-p7ve.vercel.app'));
 });
 
-self.addEventListener('message', e => {
+// Agendamento local via message
+self.addEventListener('message', function(e) {
   if (e.data && e.data.type === 'SCHEDULE') {
-    const { id, delay, title, body } = e.data;
-    setTimeout(() => {
-      self.registration.showNotification(title || 'Shopee Viral Pro', {
-        body: body || 'Hora do envio agendado!',
+    setTimeout(function() {
+      self.registration.showNotification(e.data.title || 'Shopee Viral Pro ⏰', {
+        body: e.data.body || 'Hora do envio!',
         icon: 'https://img.icons8.com/color/192/shopee.png',
         vibrate: [200, 100, 200],
-        tag: id
+        tag: e.data.id
       });
-    }, delay);
+    }, e.data.delay);
   }
 });

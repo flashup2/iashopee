@@ -10,6 +10,30 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
 <meta name="apple-mobile-web-app-title" content="Shopee Viral Pro"/>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js"></script>
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyCWnWWaxQ5H6Rzi6eda1wvYgtk60Hd6dxc",
+  projectId:"iashopee7",
+  messagingSenderId:"784750676949",
+  appId:"1:784750676949:web:0582600dcdd645a79b8b5c"
+});
+var messaging=null;
+try{messaging=firebase.messaging();}catch(e){}
+var swReg=null;
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js').then(function(reg){
+    swReg=reg;
+    if(messaging){
+      messaging.getToken({
+        vapidKey:'BHFRbmUYJOoMaGtf3EptQ1I2eMp75FkaVBl7sQ68TRBxv9-ZzmwxOEhsM2GiaFClZAT7onn2fjnrPg58lVTkWTk',
+        serviceWorkerRegistration:reg
+      }).then(function(t){if(t)localStorage.setItem('fcm_token',t);}).catch(function(){});
+    }
+  });
+}
+</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{--r:#EE4D2D;--g:#25D366;--dk:#1a1a2e;--bg:#fff8f6;--card:#fff;--borda:#ffe0d6;}
@@ -1464,10 +1488,6 @@ function prevWpp(){var t=document.getElementById('wpp-texto').value;var l=docume
 function enviarWpp(){var t=document.getElementById('wpp-texto').value.trim();var l=document.getElementById('wpp-link').value.trim();var msg=(t+(l?'\n\n'+l:'')).trim();if(!msg){alert('Escreva a mensagem!');return;}cnts.wpp++;updStats();window.open('https://api.whatsapp.com/send?text='+encodeURIComponent(msg),'_blank');}
 function copiarWpp(){var t=document.getElementById('wpp-texto').value;var l=document.getElementById('wpp-link').value;navigator.clipboard.writeText((t+(l?'\n\n'+l:'')).trim()).then(function(){alert('Copiado!');});}
 
-var swReg=null;
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('/sw.js').then(function(reg){swReg=reg;});
-}
 function adicionarAgenda(){
   var hora=document.getElementById('ag-hora').value;
   var desc=document.getElementById('ag-desc').value.trim()||'Envio agendado';
@@ -1490,6 +1510,7 @@ function adicionarAgenda(){
     if(perm==='granted'){
       if(swReg&&swReg.active){
         swReg.active.postMessage({type:'SCHEDULE',id:String(id),delay:delay,title:'Shopee Viral Pro ⏰',body:desc});
+        alert('✅ Agendado para '+hora+'!\n\n🔔 Você vai receber uma notificação mesmo com o app fechado!\n\n💬 Mensagem: '+desc);
       } else {
         setTimeout(function(){
           new Notification('Shopee Viral Pro ⏰',{body:desc,icon:'https://img.icons8.com/color/192/shopee.png'});
@@ -1497,10 +1518,10 @@ function adicionarAgenda(){
           agenda=agenda.map(function(a){return a.id===id?Object.assign({},a,{status:'enviado'}):a;});
           renderAgenda();
         },delay);
+        alert('✅ Agendado para '+hora+'!');
       }
-      alert('✅ Agendado para '+hora+'!\n\nDica: Instale o app na tela inicial para notificações mesmo com app fechado.');
     } else {
-      alert('⚠️ Permita as notificações para o agendamento funcionar!');
+      alert('⚠️ Permita as notificações nas configurações do navegador para o agendamento funcionar!');
     }
   });
 }
