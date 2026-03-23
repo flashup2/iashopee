@@ -1607,6 +1607,33 @@ document.addEventListener('DOMContentLoaded',function(){
   document.getElementById('btn-logout').onclick=fazerLogout;
   document.getElementById('btn-chat-send').onclick=enviarChat;
   document.getElementById('chat-inp').onkeydown=function(e){if(e.key==='Enter')enviarChat();};
+
+  // Renderiza dados salvos ao abrir o app
+  updStats();
+  renderVitrine();
+  renderAgenda();
+  renderHistoricoAfl();
+
+  // Re-registra agendamentos pendentes no SW ao abrir o app
+  if(swReg && swReg.active && agenda && agenda.length){
+    agenda.forEach(function(a){
+      if(a.status==='pendente'){
+        var partes=a.hora.split(':');
+        var alvo=new Date();
+        alvo.setHours(parseInt(partes[0]),parseInt(partes[1]),0,0);
+        if(alvo<=new Date()) alvo.setDate(alvo.getDate()+1);
+        var delay=alvo-new Date();
+        swReg.active.postMessage({
+          type:'SCHEDULE',
+          id:String(a.id),
+          delay:delay,
+          title:'⏰ '+a.desc,
+          body:a.msg?'Toque para abrir WhatsApp com mensagem pronta!':'Hora do envio!',
+          url:a.msg?'https://api.whatsapp.com/send?text='+encodeURIComponent(a.msg):null
+        });
+      }
+    });
+  }
 });
 </script>
 </body>
