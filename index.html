@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Shopee Viral Pro</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet"/>
+<link rel="manifest" href="/manifest.json"/>
+<meta name="theme-color" content="#EE4D2D"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+<meta name="apple-mobile-web-app-title" content="Shopee Viral Pro"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{--r:#EE4D2D;--g:#25D366;--dk:#1a1a2e;--bg:#fff8f6;--card:#fff;--borda:#ffe0d6;}
@@ -1313,7 +1318,7 @@ async function enviarChat(){
       body:JSON.stringify({messages:chatHistorico.slice(-8)})
     });
     var dd=await r.json();
-    var resp=dd.text||dd.error||'Erro na resposta.';
+    var resp=dd.content.map(function(c){return c.text||'';}).join('');
     var typing=document.getElementById('typing-msg');
     if(typing) typing.remove();
     chatHistorico.push({role:'assistant',content:resp});
@@ -1455,25 +1460,46 @@ function prevWpp(){var t=document.getElementById('wpp-texto').value;var l=docume
 function enviarWpp(){var t=document.getElementById('wpp-texto').value.trim();var l=document.getElementById('wpp-link').value.trim();var msg=(t+(l?'\n\n'+l:'')).trim();if(!msg){alert('Escreva a mensagem!');return;}cnts.wpp++;updStats();window.open('https://api.whatsapp.com/send?text='+encodeURIComponent(msg),'_blank');}
 function copiarWpp(){var t=document.getElementById('wpp-texto').value;var l=document.getElementById('wpp-link').value;navigator.clipboard.writeText((t+(l?'\n\n'+l:'')).trim()).then(function(){alert('Copiado!');});}
 
+var swReg=null;
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js').then(function(reg){swReg=reg;});
+}
+
 function adicionarAgenda(){
   var hora=document.getElementById('ag-hora').value;
   var desc=document.getElementById('ag-desc').value.trim()||'Envio agendado';
   var msg=document.getElementById('ag-msg').value.trim();
   if(!hora){alert('Defina o horario!');return;}
-  var dias=[];document.getElementById('ag-dias-row').querySelectorAll('.pill.on').forEach(function(p){dias.push(p.dataset.dia);});
+  var dias=[];
+  document.getElementById('ag-dias-row').querySelectorAll('.pill.on').forEach(function(p){dias.push(p.dataset.dia);});
   if(!dias.length){alert('Selecione ao menos um dia!');return;}
   var id=Date.now();
-  agenda.push({id:id,hora:hora,dias:dias,desc:desc,msg:msg,status:'pendente'});
-  document.getElementById('ag-desc').value='';document.getElementById('ag-msg').value='';
-  renderAgenda();
-  var p=hora.split(':');var alvo=new Date();alvo.setHours(parseInt(p[0]),parseInt(p[1]),0,0);
+  var partes=hora.split(':');
+  var alvo=new Date();
+  alvo.setHours(parseInt(partes[0]),parseInt(partes[1]),0,0);
   if(alvo<=new Date()) alvo.setDate(alvo.getDate()+1);
-  setTimeout(function(){
-    if(Notification.permission==='granted') new Notification(CFG.appNome,{body:desc});
-    if(msg&&confirm('HORA DO ENVIO!\n'+desc+'\n\nAbrir WhatsApp?')) window.open('https://api.whatsapp.com/send?text='+encodeURIComponent(msg),'_blank');
-    agenda=agenda.map(function(a){return a.id===id?Object.assign({},a,{status:'enviado'}):a;});renderAgenda();
-  },alvo-new Date());
-  if(Notification.permission==='default') Notification.requestPermission();
+  var delay=alvo-new Date();
+  agenda.push({id:id,hora:hora,dias:dias,desc:desc,msg:msg,status:'pendente'});
+  document.getElementById('ag-desc').value='';
+  document.getElementById('ag-msg').value='';
+  renderAgenda();
+  Notification.requestPermission().then(function(perm){
+    if(perm==='granted'){
+      if(swReg && swReg.active){
+        swReg.active.postMessage({type:'SCHEDULE',id:String(id),delay:delay,title:'Shopee Viral Pro ⏰',body:desc});
+      } else {
+        setTimeout(function(){
+          new Notification('Shopee Viral Pro ⏰',{body:desc,icon:'https://img.icons8.com/color/192/shopee.png'});
+          if(msg&&confirm('HORA DO ENVIO!\n'+desc+'\n\nAbrir WhatsApp?')) window.open('https://api.whatsapp.com/send?text='+encodeURIComponent(msg),'_blank');
+          agenda=agenda.map(function(a){return a.id===id?Object.assign({},a,{status:'enviado'}):a;});
+          renderAgenda();
+        },delay);
+      }
+      alert('✅ Agendado para '+hora+'!\n\nDica: Instale o app na tela inicial para receber notificações mesmo com o navegador fechado.');
+    } else {
+      alert('⚠️ Permita as notificações para o agendamento funcionar!');
+    }
+  });
 }
 
 function renderAgenda(){
