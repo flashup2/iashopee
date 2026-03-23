@@ -435,16 +435,25 @@ input:focus,textarea:focus,select:focus{border-color:var(--r);}
       </div>
       <div class="card">
         <div class="card-hd">🔗 Gerar link com comissao</div>
-        <lbl>Link do produto</lbl>
-        <input type="text" id="afl-link-input" placeholder="https://shopee.com.br/produto..." oninput="previewProduto()"/>
+        <div style="background:#fff0eb;border-radius:10px;padding:10px 12px;font-size:12px;color:#7a2a10;margin-bottom:10px;line-height:1.6;">
+          💡 <strong>Como pegar o link completo:</strong><br>
+          Shopee App → produto → botão compartilhar → <strong>Copiar link</strong> (não use o link encurtado s.shopee.com.br)
+        </div>
+        <lbl>Link do produto (link completo)</lbl>
+        <input type="text" id="afl-link-input" placeholder="https://shopee.com.br/Nome-do-produto-i.123.456" oninput="previewProduto()"/>
         <lbl>Nome do produto</lbl>
-        <input type="text" id="afl-nome" placeholder="Ex: Vestido floral azul"/>
+        <input type="text" id="afl-nome" placeholder="Ex: Carrinho bebê Portátil" oninput="atualizarNomePreview()"/>
         <div id="produto-preview" style="display:none;background:#fff8f6;border:1.5px solid #ffe0d6;border-radius:12px;padding:12px;margin:10px 0;">
           <div style="display:flex;gap:10px;align-items:flex-start;">
-            <img id="produto-img" src="" style="width:80px;height:80px;border-radius:8px;object-fit:cover;background:#eee;" onerror="this.src='https://img.icons8.com/color/80/shopee.png'"/>
+            <div style="position:relative;flex-shrink:0;">
+              <img id="produto-img" src="" style="width:80px;height:80px;border-radius:8px;object-fit:cover;background:#eee;" onerror="this.src='https://img.icons8.com/color/80/shopee.png'"/>
+              <label for="upload-img-prod" style="position:absolute;bottom:-6px;right:-6px;background:#EE4D2D;color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.2);" title="Trocar imagem">📷</label>
+              <input type="file" id="upload-img-prod" accept="image/*" style="display:none;" onchange="uploadImgProduto(this)"/>
+            </div>
             <div style="flex:1;">
               <div id="produto-nome-prev" style="font-size:13px;font-weight:800;color:#1a1a2e;margin-bottom:4px;"></div>
               <div id="produto-loja-prev" style="font-size:11px;color:#888;"></div>
+              <div style="font-size:10px;color:#bbb;margin-top:4px;">📷 Toque na câmera para trocar a imagem</div>
             </div>
           </div>
           <div id="produto-copy-prev" style="background:white;border-radius:8px;padding:10px;margin-top:10px;font-size:12px;line-height:1.7;color:#333;white-space:pre-wrap;border:1px solid #ffe0d6;"></div>
@@ -1138,19 +1147,45 @@ var _previewMsg='';
 var _previewDebounce=null;
 function previewProduto(){
   var link=document.getElementById('afl-link-input').value.trim();
-  if(!link||!link.includes('shopee')) return;
+  if(!link||link.length<10) return;
+  // Avisa se for link encurtado
+  if(link.includes('s.shopee.com.br')||link.includes('shope.ee')){
+    document.getElementById('produto-preview').style.display='block';
+    document.getElementById('produto-img').src='https://img.icons8.com/color/80/shopee.png';
+    document.getElementById('produto-nome-prev').textContent='⚠️ Use o link completo do produto!';
+    document.getElementById('produto-loja-prev').textContent='Shopee App → produto → Compartilhar → Copiar link';
+    document.getElementById('produto-copy-prev').textContent='';
+    montarMsgManual(link);
+    return;
+  }
   clearTimeout(_previewDebounce);
   _previewDebounce=setTimeout(function(){buscarPreview(link);},800);
 }
 
+function atualizarNomePreview(){
+  // Atualiza a mensagem quando o nome é digitado manualmente
+  var link=document.getElementById('afl-link-input').value.trim();
+  if(link) montarMsgManual(link);
+}
+
+function montarMsgManual(link){
+  var id=document.getElementById('afl-id').value.trim();
+  var nome=document.getElementById('afl-nome').value.trim()||'Produto Shopee';
+  var linkAfl=link+(link.includes('?')?'&':'?')+'af_id='+(id||'')+'&af_siteid=shopee_br&channel=affiliate_link&is_deep_link=true&smtt=0';
+  _previewMsg='🔥 ACHADO INCRÍVEL NA SHOPEE!\n\n✅ '+nome+'\n\n🚚 Frete GRÁTIS\n⭐ Avaliação top!\n\n👇 Pega aqui:\n'+linkAfl+'\n\n⚠️ Promoção por tempo limitado!';
+  document.getElementById('produto-nome-prev').textContent=nome;
+  document.getElementById('produto-copy-prev').textContent=_previewMsg;
+  document.getElementById('produto-preview').style.display='block';
+}
+
 async function buscarPreview(link){
   var id=document.getElementById('afl-id').value.trim();
+  var nomeManual=document.getElementById('afl-nome').value.trim();
 
   document.getElementById('produto-preview').style.display='block';
   document.getElementById('produto-img').src='https://img.icons8.com/color/80/shopee.png';
-  document.getElementById('produto-nome-prev').textContent='Buscando produto...';
-  document.getElementById('produto-loja-prev').textContent='🔍 Aguarde...';
-  document.getElementById('produto-copy-prev').textContent='';
+  document.getElementById('produto-nome-prev').textContent='🔍 Buscando produto...';
+  document.getElementById('produto-loja-prev').textContent='Aguarde...';
 
   try{
     var r=await fetch('/api/preview',{
@@ -1159,16 +1194,18 @@ async function buscarPreview(link){
       body:JSON.stringify({url:link})
     });
     var d=await r.json();
-    if(d.error) throw new Error(d.error);
 
-    // Usa URL final (após redirect) para o link de afiliado
     var urlBase=d.finalUrl||link;
     var linkAfl=urlBase+(urlBase.includes('?')?'&':'?')+'af_id='+(id||'')+'&af_siteid=shopee_br&channel=affiliate_link&is_deep_link=true&smtt=0';
 
-    var nome=d.title||document.getElementById('afl-nome').value||'Produto Shopee';
+    // Usa nome da API ou o digitado manualmente
+    var nome=nomeManual||(d.title&&!d.title.toLowerCase().includes('shopee brasil')?d.title:'')||'Produto Shopee';
     if(nome.length>80) nome=nome.substring(0,80)+'...';
 
-    if(d.image) document.getElementById('produto-img').src=d.image;
+    // Só usa imagem se for real (não a logo da Shopee)
+    if(d.image&&d.image.length>10&&!d.image.includes('logo')&&!d.image.includes('icon')) {
+      document.getElementById('produto-img').src=d.image;
+    }
     document.getElementById('produto-nome-prev').textContent=nome;
 
     var precoInfo='';
@@ -1176,7 +1213,10 @@ async function buscarPreview(link){
     if(d.preco) precoInfo+=d.preco;
     document.getElementById('produto-loja-prev').textContent='🛍️ Shopee Brasil'+(precoInfo?' | '+precoInfo:'');
 
-    if(d.title) document.getElementById('afl-nome').value=d.title.substring(0,60);
+    // Só sobrescreve o campo nome se veio algo útil da API
+    if(d.title&&!d.title.toLowerCase().includes('shopee brasil')&&!nomeManual){
+      document.getElementById('afl-nome').value=d.title.substring(0,60);
+    }
 
     _previewMsg='🔥 ACHADO INCRÍVEL NA SHOPEE!\n\n'
       +'✅ '+nome+'\n'
@@ -1189,13 +1229,24 @@ async function buscarPreview(link){
     document.getElementById('produto-copy-prev').textContent=_previewMsg;
 
   }catch(err){
-    document.getElementById('produto-nome-prev').textContent='Não foi possível buscar. Preencha o nome manualmente.';
-    document.getElementById('produto-loja-prev').textContent='';
+    // Mesmo com erro, monta a mensagem com o nome manual
+    montarMsgManual(link);
+    document.getElementById('produto-loja-prev').textContent='🛍️ Shopee Brasil';
   }
 }
 
 function extrairNomeDaUrl(url){
   try{var p=url.split('/');var seg=p[p.length-1]||p[p.length-2];return seg.replace(/[-_]/g,' ').replace(/\?\S+/,'').trim().substring(0,60);}catch(e){return '';}
+}
+
+function uploadImgProduto(input){
+  var file=input.files[0];
+  if(!file) return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    document.getElementById('produto-img').src=e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 
 function copiarPreviewMsg(){
