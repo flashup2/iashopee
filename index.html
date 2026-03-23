@@ -1135,22 +1135,61 @@ function usarAflNoWpp(){document.getElementById('wpp-link').value=aflLinkAtual;p
 function usarShortNoWpp(){document.getElementById('wpp-link').value=shortLinkAtual||aflLinkAtual;prevWpp();ir('wpp');}
 
 var _previewMsg='';
+var _previewDebounce=null;
 function previewProduto(){
   var link=document.getElementById('afl-link-input').value.trim();
   if(!link||!link.includes('shopee')) return;
+  clearTimeout(_previewDebounce);
+  _previewDebounce=setTimeout(function(){buscarPreview(link);},800);
+}
+
+async function buscarPreview(link){
   var id=document.getElementById('afl-id').value.trim();
   var linkAfl=link+(link.includes('?')?'&':'?')+'af_id='+(id||'')+'&af_siteid=shopee_br&channel=affiliate_link&is_deep_link=true&smtt=0';
-  var itemId='';
-  var m=link.match(/i\.\d+\.(\d+)|\/(\d+)$/);
-  if(m) itemId=m[1]||m[2];
-  var imgUrl=itemId?'https://down-br.img.susercontent.com/file/'+itemId:'https://img.icons8.com/color/80/shopee.png';
-  var nome=document.getElementById('afl-nome').value||extrairNomeDaUrl(link);
-  document.getElementById('produto-img').src=imgUrl;
-  document.getElementById('produto-nome-prev').textContent=nome||'Produto Shopee';
-  document.getElementById('produto-loja-prev').textContent='🛍️ Shopee Brasil';
-  _previewMsg='🔥 ACHADO INCRÍVEL NA SHOPEE!\n\n'+(nome?'✅ '+nome+'\n\n':'')+'🚚 Frete GRÁTIS\n⭐ Avaliação top\n💰 Preço imperdível!\n\n👇 Pega aqui:\n'+linkAfl+'\n\n⚠️ Promoção por tempo limitado!';
-  document.getElementById('produto-copy-prev').textContent=_previewMsg;
+
   document.getElementById('produto-preview').style.display='block';
+  document.getElementById('produto-img').src='https://img.icons8.com/color/80/shopee.png';
+  document.getElementById('produto-nome-prev').textContent='Carregando...';
+  document.getElementById('produto-loja-prev').textContent='🔍 Buscando dados do produto...';
+  document.getElementById('produto-copy-prev').textContent='';
+
+  try{
+    var r=await fetch('/api/preview',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({url:link})
+    });
+    var d=await r.json();
+    if(d.error) throw new Error(d.error);
+
+    var nome=d.title||document.getElementById('afl-nome').value||'Produto Shopee';
+    if(nome.length>80) nome=nome.substring(0,80)+'...';
+
+    document.getElementById('produto-img').src=d.image||'https://img.icons8.com/color/80/shopee.png';
+    document.getElementById('produto-nome-prev').textContent=nome;
+
+    var precoInfo='';
+    if(d.precoDe) precoInfo='~~'+d.precoDe+'~~ → ';
+    if(d.preco) precoInfo+=d.preco;
+    document.getElementById('produto-loja-prev').textContent='🛍️ Shopee Brasil'+(precoInfo?' | '+precoInfo:'');
+
+    if(d.title) document.getElementById('afl-nome').value=d.title.substring(0,60);
+
+    _previewMsg='🔥 ACHADO INCRÍVEL NA SHOPEE!\n\n'
+      +'✅ '+nome+'\n'
+      +(d.precoDe?'❌ Era: '+d.precoDe+'\n':'')
+      +(d.preco?'💰 Por: '+d.preco+'\n':'')
+      +'\n🚚 Frete GRÁTIS\n⭐ Avaliação top!\n'
+      +'\n👇 Pega aqui:\n'+linkAfl
+      +'\n\n⚠️ Promoção por tempo limitado!';
+
+    document.getElementById('produto-copy-prev').textContent=_previewMsg;
+
+  }catch(err){
+    document.getElementById('produto-nome-prev').textContent='Cole o link e clique em Gerar link';
+    document.getElementById('produto-loja-prev').textContent='';
+    document.getElementById('produto-copy-prev').textContent='';
+  }
 }
 
 function extrairNomeDaUrl(url){
