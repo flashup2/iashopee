@@ -1017,10 +1017,14 @@ function salvarConfig(){
 function selAPill(el,campo,val){el.parentElement.querySelectorAll('.pill').forEach(function(p){p.classList.remove('on');});el.classList.add('on');document.getElementById(campo).value=val;}
 
 // ============ APP ============
-var prods=[],agenda=[];var filtroAtual='todos';
-var cnts={prod:0,afl:0,copy:0,wpp:0};
+function svpGet(k,def){try{var v=localStorage.getItem(k);return v?JSON.parse(v):def;}catch(e){return def;}}
+function svpSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+var prods=svpGet('svp_prods',[]);
+var agenda=svpGet('svp_agenda',[]);
+var cnts=svpGet('svp_cnts',{prod:0,afl:0,copy:0,wpp:0});
+var filtroAtual='todos';
 window._roteiro='';window._copies=[];window._legendas=[];window._ultimoAchado=null;
-var aflLinkAtual='',shortLinkAtual='',aflHistorico=[];
+var aflLinkAtual='',shortLinkAtual='',aflHistorico=svpGet('svp_aflhist',[]);
 var catEmoji={moda:'👗',beleza:'💄',casa:'🏠',eletro:'📱',outros:'📦'};
 
 var tpls={
@@ -1066,7 +1070,7 @@ function selEmoji(el,val){document.getElementById('emoji-row').querySelectorAll(
 function selTab(el,campo,val){el.parentElement.querySelectorAll('.tab-i').forEach(function(t){t.classList.remove('on');});el.classList.add('on');document.getElementById(campo).value=val;}
 function selTplCat(el,cat){document.getElementById('tpl-tabs').querySelectorAll('.tab-i').forEach(function(t){t.classList.remove('on');});el.classList.add('on');renderTpls(cat);}
 function filtrar(el,cat){document.getElementById('filtros').querySelectorAll('.filter-pill').forEach(function(p){p.classList.remove('on');});el.classList.add('on');filtroAtual=cat;renderVitrine();}
-function updStats(){cnts.prod=prods.length;['prod','afl','copy','wpp'].forEach(function(k){var e=document.getElementById('cnt-'+k);if(e)e.textContent=cnts[k];});}
+function updStats(){cnts.prod=prods.length;['prod','afl','copy','wpp'].forEach(function(k){var e=document.getElementById('cnt-'+k);if(e)e.textContent=cnts[k];});svpSet('svp_cnts',cnts);svpSet('svp_prods',prods);}
 function buscarOfertas(){var t=document.getElementById('busca-termo').value.trim();if(!t){alert('Digite o que buscar!');return;}window.open('https://www.google.com/search?q='+encodeURIComponent(t+' '+document.getElementById('busca-filtro').value+' site:shopee.com.br'),'_blank');}
 function buscaRapida(q){window.open('https://www.google.com/search?q='+encodeURIComponent(q+' site:shopee.com.br'),'_blank');}
 
@@ -1464,7 +1468,6 @@ var swReg=null;
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/sw.js').then(function(reg){swReg=reg;});
 }
-
 function adicionarAgenda(){
   var hora=document.getElementById('ag-hora').value;
   var desc=document.getElementById('ag-desc').value.trim()||'Envio agendado';
@@ -1485,7 +1488,7 @@ function adicionarAgenda(){
   renderAgenda();
   Notification.requestPermission().then(function(perm){
     if(perm==='granted'){
-      if(swReg && swReg.active){
+      if(swReg&&swReg.active){
         swReg.active.postMessage({type:'SCHEDULE',id:String(id),delay:delay,title:'Shopee Viral Pro ⏰',body:desc});
       } else {
         setTimeout(function(){
@@ -1495,7 +1498,7 @@ function adicionarAgenda(){
           renderAgenda();
         },delay);
       }
-      alert('✅ Agendado para '+hora+'!\n\nDica: Instale o app na tela inicial para receber notificações mesmo com o navegador fechado.');
+      alert('✅ Agendado para '+hora+'!\n\nDica: Instale o app na tela inicial para notificações mesmo com app fechado.');
     } else {
       alert('⚠️ Permita as notificações para o agendamento funcionar!');
     }
@@ -1503,6 +1506,7 @@ function adicionarAgenda(){
 }
 
 function renderAgenda(){
+  svpSet('svp_agenda',agenda);
   var el=document.getElementById('lista-agenda');
   if(!agenda.length){el.innerHTML='<div class="empty-state"><div class="eicon">📅</div><p>Nenhum agendamento ainda.</p></div>';return;}
   el.innerHTML=agenda.map(function(a){
