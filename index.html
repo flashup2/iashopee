@@ -1145,12 +1145,11 @@ function previewProduto(){
 
 async function buscarPreview(link){
   var id=document.getElementById('afl-id').value.trim();
-  var linkAfl=link+(link.includes('?')?'&':'?')+'af_id='+(id||'')+'&af_siteid=shopee_br&channel=affiliate_link&is_deep_link=true&smtt=0';
 
   document.getElementById('produto-preview').style.display='block';
   document.getElementById('produto-img').src='https://img.icons8.com/color/80/shopee.png';
-  document.getElementById('produto-nome-prev').textContent='Carregando...';
-  document.getElementById('produto-loja-prev').textContent='🔍 Buscando dados do produto...';
+  document.getElementById('produto-nome-prev').textContent='Buscando produto...';
+  document.getElementById('produto-loja-prev').textContent='🔍 Aguarde...';
   document.getElementById('produto-copy-prev').textContent='';
 
   try{
@@ -1162,10 +1161,14 @@ async function buscarPreview(link){
     var d=await r.json();
     if(d.error) throw new Error(d.error);
 
+    // Usa URL final (após redirect) para o link de afiliado
+    var urlBase=d.finalUrl||link;
+    var linkAfl=urlBase+(urlBase.includes('?')?'&':'?')+'af_id='+(id||'')+'&af_siteid=shopee_br&channel=affiliate_link&is_deep_link=true&smtt=0';
+
     var nome=d.title||document.getElementById('afl-nome').value||'Produto Shopee';
     if(nome.length>80) nome=nome.substring(0,80)+'...';
 
-    document.getElementById('produto-img').src=d.image||'https://img.icons8.com/color/80/shopee.png';
+    if(d.image) document.getElementById('produto-img').src=d.image;
     document.getElementById('produto-nome-prev').textContent=nome;
 
     var precoInfo='';
@@ -1186,9 +1189,8 @@ async function buscarPreview(link){
     document.getElementById('produto-copy-prev').textContent=_previewMsg;
 
   }catch(err){
-    document.getElementById('produto-nome-prev').textContent='Cole o link e clique em Gerar link';
+    document.getElementById('produto-nome-prev').textContent='Não foi possível buscar. Preencha o nome manualmente.';
     document.getElementById('produto-loja-prev').textContent='';
-    document.getElementById('produto-copy-prev').textContent='';
   }
 }
 
